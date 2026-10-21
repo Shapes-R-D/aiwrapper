@@ -17,11 +17,12 @@
 - [Testing](../tests/README.md)
 - [AIModels catalog](dev/aimodels.md)
 - [Dependency updates](dev/dependency-updates.md)
-- [Agent workflows](dev/actions-for-agents/README.md) and [development rules](dev/rules)
+- [Shared agent guidance](airul/README.md): common rules and actions
+- [Local development rules](dev/rules/README.md): repository conventions and checks
+- [Agent actions](dev/actions-for-agents/README.md): focused development workflows
 
 ## Proposals and remaining work
 
 - [Complete the native Rust runtime](dev/proposals/native-rust.md)
-
 - [Pluggable interruption detection](dev/proposals/interruption-detection.md)
 - [Speaker verification and extraction](dev/proposals/speaker-verification-and-extraction.md)
