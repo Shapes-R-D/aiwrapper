@@ -3,7 +3,6 @@
 use super::*;
 use crate::{Tool, ToolContext, agent::validate_tools};
 use futures_util::future::BoxFuture;
-use sha2::{Digest, Sha256};
 use tokio::{sync::mpsc, task::JoinHandle};
 
 #[derive(Clone, Debug, Serialize)]
@@ -100,7 +99,7 @@ pub struct LiveAgent {
     worker: Option<JoinHandle<Result<()>>>,
     retry: Arc<Notify>,
     pending: BTreeMap<(u64, String), CancellationToken>,
-    seen: BTreeMap<String, [u8; 32]>,
+    seen: HashSet<String>,
     max_pending: usize,
     max_argument_bytes: usize,
     cancellation: CancellationToken,
@@ -147,7 +146,7 @@ impl LiveAgent {
             worker: Some(worker),
             retry,
             pending: BTreeMap::new(),
-            seen: BTreeMap::new(),
+            seen: HashSet::new(),
             max_pending,
             max_argument_bytes,
             cancellation,
@@ -249,21 +248,14 @@ impl LiveAgent {
 
     fn start_tool(&mut self, id: &str, name: &str, arguments: &Value) -> Result<()> {
         crate::error::check_cancel(&self.cancellation)?;
-        let encoded = serde_json::to_vec(&(name, arguments))?;
-        if encoded.len() > self.max_argument_bytes {
+        if serde_json::to_vec(&(name, arguments))?.len() > self.max_argument_bytes {
             return Err(Error::Protocol(
                 "live tool arguments exceed the queue budget".into(),
             ));
         }
-        let digest: [u8; 32] = Sha256::digest(encoded).into();
-        if let Some(previous) = self.seen.get(id) {
+        if self.seen.contains(id) {
             return Err(Error::Protocol(
-                if previous == &digest {
-                    "tool id already belongs to an earlier connection"
-                } else {
-                    "replayed tool id has different arguments"
-                }
-                .into(),
+                "tool id already belongs to an earlier connection".into(),
             ));
         }
         if self.pending.len() >= self.max_pending || self.seen.len() >= 16_384 {
@@ -295,7 +287,7 @@ impl LiveAgent {
                 generation: self.generation,
             })
             .map_err(|_| Error::Protocol("live tool queue is full or closed".into()))?;
-        self.seen.insert(id.into(), digest);
+        self.seen.insert(id.into());
         self.pending
             .insert((self.generation, id.into()), cancellation);
         Ok(())

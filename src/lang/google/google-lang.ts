@@ -375,7 +375,6 @@ export class GoogleLang extends LanguageProvider {
     if (!Array.isArray(parts) || parts.length === 0) return;
 
     const assistantMessage = new LangMessage("assistant", []);
-    let toolIndex = 0;
 
     for (const part of parts) {
       if (!part) continue;
@@ -392,18 +391,16 @@ export class GoogleLang extends LanguageProvider {
       }
       const funcCall = part.functionCall || part.function_call;
       if (funcCall) {
-        const name = funcCall.name || `function_call_${toolIndex}`;
-        const fallbackCallId = `function_call_${toolIndex++}`;
+        const name = funcCall.name;
         const callId = typeof funcCall.id === "string" && funcCall.id.length > 0
           ? funcCall.id
-          : fallbackCallId;
-        const rawArgs = funcCall.args || funcCall.arguments;
-        const args = this.parseFunctionArgs(rawArgs);
+          : crypto.randomUUID();
+        const rawArgs = funcCall.args ?? funcCall.arguments ?? {};
         const toolItem: any = {
           type: "tool",
           callId,
           name,
-          arguments: args,
+          arguments: typeof rawArgs === "string" ? JSON.parse(rawArgs) : rawArgs,
         };
         // Store thoughtSignature if present (required by Google Gemini API)
         // Google API returns thoughtSignature (camelCase) at the part level
@@ -421,16 +418,4 @@ export class GoogleLang extends LanguageProvider {
     }
   }
 
-  private parseFunctionArgs(rawArgs: any): Record<string, any> {
-    if (!rawArgs) return {};
-    if (typeof rawArgs === "object") return rawArgs;
-    if (typeof rawArgs === "string") {
-      try {
-        return JSON.parse(rawArgs);
-      } catch {
-        return {};
-      }
-    }
-    return {};
-  }
 }

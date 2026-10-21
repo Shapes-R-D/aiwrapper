@@ -234,7 +234,7 @@ export class OllamaLang extends LanguageProvider {
       if (!item) {
         item = {
           type: "tool",
-          callId: call.id || `ollama_tool_${targetIndex}`,
+          callId: call.id || crypto.randomUUID(),
           name: fn.name,
           arguments: {},
         };
@@ -244,20 +244,9 @@ export class OllamaLang extends LanguageProvider {
 
       item.name = fn.name;
       item.callId = call.id || item.callId;
-      item.arguments = this.parseToolArguments(fn.arguments);
-    }
-  }
-
-  private parseToolArguments(
-    args: Record<string, any> | string | undefined,
-  ): Record<string, any> {
-    if (!args) return {};
-    if (typeof args === "object") return args;
-
-    try {
-      return JSON.parse(args);
-    } catch {
-      return {};
+      item.arguments = typeof fn.arguments === "string"
+        ? JSON.parse(fn.arguments)
+        : fn.arguments ?? {};
     }
   }
 
